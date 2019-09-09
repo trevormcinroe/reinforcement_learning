@@ -78,7 +78,7 @@ class Agent:
 
         self.state_trajectories = all_traj_holder
 
-    def _build_D(self, ensure_exploration=False):
+    def _build_D(self, ensure_exploration=False, ε=None):
         """"""
 
         if self.state_trajectories == None:
@@ -86,7 +86,31 @@ class Agent:
 
         # If the user has decided to allow exploration to non-expert-visited S_0...
         if ensure_exploration:
-            pass
+
+            # Need some checks here to make sure that the user has entered ε
+            if ε is None:
+                raise AttributeError('ε has not been specified.')
+
+            if 1 < ε < 0:
+                raise ValueError('ε ∈ [0,1]')
+
+            # Init a dictionary that will be filled
+            base_dict = {x: 0 for x in self.action_list}
+
+            # Looping through each empirical trajectory and adding one to the counter for each
+            # initial action
+            for traj in self.trajectories:
+                base_dict[traj[0]] = base_dict[traj[0]] + 1
+
+            # Looping through now and normalizing the counts
+            for k, v in base_dict.items():
+
+                base_dict[k] = round(v / len(self.trajectories), 3)
+
+            # As we can see, actions that have never been taken are now action: 0.0%
+            # Let's raise these up to the given percentage and uniformly reduce the
+            # other actions by the sum of this amount
+
 
         # If the user decides to not allow for initial state exploration, we simply use the
         else:
