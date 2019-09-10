@@ -69,7 +69,7 @@ class Agent:
             # Appending in our S_0
             # There  is excessive use of the .copy() method here. This is a silly Python thing
 
-            # I have commented out the S0 as being  a vector of 0s.
+            # I have commented out the S0 as being  a vector of 0s!
             # Seems unnecessary to have and complicates the Mu calc? 9.10.2019
             # traj_l.append(self.environment.current_state.copy())
 

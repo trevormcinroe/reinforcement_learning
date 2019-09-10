@@ -28,7 +28,7 @@ sim.μ_estimate(trajectories=sim.agents['expert'].state_trajectories, gamma=.5)
 # from cvxopt import solvers #convex optimization library
 # import numpy as np
 #
-#
+
 # print(matrix(2 * np.eye(1), tc='d'))
 #
 # def optimization(self):  # implement the convex optimization, posed as an SVM problem

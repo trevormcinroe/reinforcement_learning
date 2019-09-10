@@ -15,6 +15,7 @@ class Environment:
         current_state (dict):
 
     """
+
     def __init__(self):
         """"""
 

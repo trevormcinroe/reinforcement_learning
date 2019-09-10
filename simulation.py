@@ -62,6 +62,8 @@ class Simulation:
                 # We can do this by looping through each of the
                 phi = np.array([step[x] for x in self.agents['expert'].action_list])
 
+                # Now to do
+
 
 
                 print(phi)
