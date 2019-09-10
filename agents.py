@@ -25,7 +25,7 @@ class Agent:
         self.D = None
         self.T = None  # Might not even need this with certain RL algos
 
-    def _build_trajectories(self):
+    def build_trajectories(self):
         """
         Using a list of given action lists from an "expert", this function will build the Trajectory of the States
         after each action in the list has been taken.
@@ -46,8 +46,8 @@ class Agent:
             raise AttributeError(f'Your agent must be an expert type to do this. This agent is: {self.type}')
 
         # A catch in the beginning to ensure that the user is wanting to reset the environment
-        answer = input('Building the State Trajectories will cause the attached environment to  '
-                              'be reset. Are you sure? (y/n)')
+        answer = input('Building the State Trajectories will cause the attached environment to '
+                       'be reset. Are you sure? (y/n)')
 
         if not answer == 'y':
             print('Aborting State Trajectory creation.')
@@ -68,7 +68,10 @@ class Agent:
 
             # Appending in our S_0
             # There  is excessive use of the .copy() method here. This is a silly Python thing
-            traj_l.append(self.environment.current_state.copy())
+
+            # I have commented out the S0 as being  a vector of 0s.
+            # Seems unnecessary to have and complicates the Mu calc? 9.10.2019
+            # traj_l.append(self.environment.current_state.copy())
 
             # Looping through each state and recording it
             for action in trajectory:
@@ -78,9 +81,13 @@ class Agent:
             # Appending each trajectory to the outer holder
             all_traj_holder.append(traj_l)
 
+        # Setting the trajectories for the Agent
         self.state_trajectories = all_traj_holder
 
-    def _build_D(self, ensure_exploration=False, ε=None):
+        # Resetting the environment back to its initial state
+        self.environment._reset(action_list=self.action_list)
+
+    def build_D(self, ensure_exploration=False, ε=None):
         """"""
 
         if self.state_trajectories == None:
@@ -135,8 +142,9 @@ class Agent:
             self.D = base_dict
 
 
-    def _build_transition_probabilities(self):
+    def build_transition_probabilities(self):
         """"""
 
         # Initalizing
+        pass
 
