@@ -1,6 +1,10 @@
 """
 
 """
+#
+# TODO: Calculate the feature expectations of a given policy -- we'll need todo this for the
+# expert's features and some random policy
+
 from collections import Counter
 
 class Simulation:
@@ -32,6 +36,9 @@ class Simulation:
 
         # Pulling out the expert Agent
         expert = self.agents['expert']
+
+
+
 
 
 

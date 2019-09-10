@@ -14,7 +14,6 @@ class Environment:
         action_list (list):
         current_state (dict):
 
-
     """
     def __init__(self):
         """"""
