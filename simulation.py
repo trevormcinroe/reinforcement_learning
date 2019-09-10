@@ -48,8 +48,14 @@ class Simulation:
         if not type(gamma) == float:
             raise TypeError('Gamma must be a float.')
 
+        # Init a list that will hold the Feature Expectations of each trajectory
+        outer_traj = []
+
         # Looping through the list of trajectories...
         for traj in trajectories:
+
+            # Init an inner list holder for the
+            inner_traj = []
 
             # Now looping through each step in the traj
             # This data should be structured like a dictionary:
@@ -62,11 +68,33 @@ class Simulation:
                 # We can do this by looping through each of the
                 phi = np.array([step[x] for x in self.agents['expert'].action_list])
 
-                # Now to do
+                # Normalizing this [0,1]
+                # This helps later on with L1 norming
+                phi = phi / len(traj)
+
+                # Multiplying ϕ by our degrading discount factor
+                phi = (gamma ** i) * phi
+
+                inner_traj.append(phi)
+
+            # Once we have finished looping through all of the steps, let us sum the vectors
+            # Let us start by init'ing a vector of zeros
+            init_vector = np.zeros(len(inner_traj[0]))
+
+            # Then, looping through each discounted state and summing them together
+            for state in inner_traj:
+
+                init_vector += state
+
+            # Finally, appending the resulting Feature vector to the outer list
+            outer_traj.append(init_vector)
+
+        print(outer_traj)
 
 
 
-                print(phi)
+
+
 
 
 
