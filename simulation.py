@@ -43,6 +43,9 @@ class Simulation:
     def μ_estimate(self, trajectories, gamma):
         """"""
 
+        if not 0 <= gamma <= 1:
+            raise ValueError('Gamma ∈ [0,1]')
+
         if not type(trajectories) == list:
             trajectories = [trajectories]
 

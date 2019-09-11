@@ -7,9 +7,9 @@ env = Environment()
 a = Agent(type='expert',
           action_list=['a', 'b', 'c', 'd', 'e', 'f', 'g'],
           environment=env,
-          trajectories=[['a', 'b', 'c', 'e', 'g', 'b'],
-                        ['a', 'b', 'c', 'a', 'g', 'g'],
-                        ['c', 'd', 'f', 'b', 'c', 'a']])
+          trajectories=[['a', 'b', 'c', 'e', 'g', 'b', 'c', 'e', 'g',],
+                        ['a', 'b', 'c', 'a', 'g', 'g', 'a', 'g', 'g'],
+                        ['c', 'd', 'f', 'b', 'c', 'a', 'd', 'f', 'b', 'c']])
 
 a.build_trajectories()
 
@@ -18,9 +18,9 @@ a.build_D()
 simul_env = Environment()
 
 sim = Simulation(agents=a, environment=simul_env)
-sim.gen_random_trajectory(i=5, n=2)
-print(sim.random_policies)
-fv = sim.μ_estimate(trajectories=sim.random_policies, gamma=.5)
+sim.gen_random_trajectory(i=22, n=2)
+
+fv = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.5)
 print(fv)
 
 #
