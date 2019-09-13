@@ -45,4 +45,3 @@ class Environment:
             return self.current_state
 
 
-

@@ -15,13 +15,24 @@ a.build_trajectories()
 
 a.build_D()
 
+# print(a.state_trajectories)
+#
 simul_env = Environment()
 
 sim = Simulation(agents=a, environment=simul_env)
-sim.gen_random_trajectory(i=22, n=2)
 
-fv = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.5)
-print(fv)
+# Need to initialize Q(s,a)
+
+sim.gen_random_trajectory(i=15, n=2)
+
+rand_polic_state_trajs = sim.build_trajectories(trajectories=sim.random_policies)
+
+sim.reset_q(trajectories=sim.agents['expert'].state_trajectories)
+
+print(sim.Q)
+
+# fv = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.5)
+# print(fv)
 
 #
 # print(env.current_state)

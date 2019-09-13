@@ -7,6 +7,7 @@
 
 from collections import Counter
 import numpy as np
+import pandas as pd
 
 class Simulation:
 
@@ -14,6 +15,7 @@ class Simulation:
         self.agents = self._agent_init(agents=agents)
         self.random_policies = None
         self.simul_env = environment
+        self.Q = None
 
     def _agent_init(self, agents):
         """
@@ -183,3 +185,147 @@ class Simulation:
         else:
 
             self.random_policies = [np.random.choice(action_list, 1)[0] for _ in range(i)]
+
+
+    # The Simulation has the ability to build its own trajectories.
+    # It does so by interacting with its stand-alone environment
+    # This will help to build out the Q(s,a) grid!
+    # Therefore, this function will return a list of str(vectors)-state-representations
+    def build_trajectories(self, trajectories):
+        """"""
+
+        # Init a list that will hold all
+        all_traj_holder = []
+
+        # Looping through each given trajectory within the trajectories list
+        for traj in trajectories:
+
+            # To ensure proper results, we need to reset the simulation's environment using the
+            # expert agent's action list
+            self.simul_env._reset(action_list=self.agents['expert'].action_list)
+
+            # Init an empty list
+            traj_l = []
+
+            # Appending in our S_0
+            # There  is excessive use of the .copy() method here. This is a silly Python thing
+
+            # I have commented out the S0 as being  a vector of 0s!
+            # Seems unnecessary to have and complicates the Mu calc? 9.10.2019
+            # traj_l.append(self.environment.current_state.copy())
+
+            # Looping through each state and recording it
+            for action in traj:
+                traj_l.append(self.simul_env._update_state(action=action, ret=True).copy())
+
+            # Appending each trajectory to the outer holder
+            all_traj_holder.append(traj_l)
+
+        # Resetting the state
+        self.simul_env._reset(action_list=self.agents['expert'].action_list)
+
+        # Now that we have our lists of state-trajectories, return those bad-boys
+        return all_traj_holder
+
+    def reset_q(self, trajectories):
+        """The purpose of this method is to build all of the unique state vectors and then use those to begin
+        construction of the state-action-pair space. As a principle, this software will use "lazy computation". That is,
+        we will not store every possible state-action pair in memory, as our state-action-space can be inf or near-inf.
+        Instead, we will check the index of self.Q to determine if we have been to this state before. If we have not,
+        we will initialize it on the fly. If we have, then great.
+
+        HERE, WE DO NOT CARE ABOUT GAMMA, AS WE ONLY NEED THE STATE REPRESENTATION, NOT ϕ
+
+        Args:
+            trajectories (list of dicts): this function expects a list of state dictionaries returned from
+                the build_trajectories() method from either the Expert Agent or the Simulation itself
+
+        Returns:
+
+        """
+
+        if not type(trajectories) == list:
+            trajectories = [trajectories]
+
+        if not type(trajectories[0][0]) == dict:
+            raise AttributeError('You have not provided trajectories in the proper format. Please refer to the '
+                                 'documentation, thanks mkay.')
+
+        state_vector_holder = []
+
+        # We need to pull out all of the values from the key:value pairs from our state trajectories dictionaries.
+        # These values will be normalized by the length of our trajectories
+        for traj in trajectories:
+
+            # # Init a holder list
+            # traj_holder = []
+
+            # Now, within each trajectory, there are snapshots of each state
+            for state in traj:
+
+                # WE DO NOT CARE ABOUT THE LENGTH OF THE TRAJECTORY HERE, AS THIS IS NOT ϕ
+                # In addition, we need to ensure that our state-vector representations STAY IN ORDER.
+                # As such, we need to loop through the expert's action values...
+                state_holder = []
+
+                for action in self.agents['expert'].action_list:
+
+                    state_holder.append(state[action])
+
+                # Finally, we append a str representation of a np.array() into the state_vector_holder
+                state_vector_holder.append(str(np.array(state_holder)))
+
+
+        # Now that we have our list of historically visited states, let's reduce this list to only the unique
+        # state-vector representations...
+        state_vector_holder = set(state_vector_holder)
+
+        # And now, let's init a Pandas DF
+        self.Q = pd.DataFrame(0,
+                              columns=self.agents['expert'].action_list,
+                              index=state_vector_holder)
+
+    def update_Q(self, state_vector, action, value):
+        """
+
+        Args:
+            state_vector:
+            action:
+            value:
+
+        Returns:
+
+        """
+
+        self.Q.loc[state_vector, action] = value
+
+    def read_Q(self, state_vector, action=None):
+        """
+
+        Args:
+            state_vector:
+            action:
+
+        Returns:
+
+        """
+
+        # This returns the entire vector of state-action pairs
+        if not action:
+
+            return self.Q.loc[state_vector]
+
+        else:
+
+            return self.Q.loc[state_vector, action]
+
+    def add_Q(self, state_vector):
+        """"""
+
+        new_state = pd.DataFrame(0,
+                                 columns=self.agents['expert'].action_list,
+                                 index=state_vector)
+
+        self.Q = self.Q.append(new_state)
+
+
