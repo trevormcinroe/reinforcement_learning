@@ -327,5 +327,3 @@ class Simulation:
                                  index=state_vector)
 
         self.Q = self.Q.append(new_state)
-
-
