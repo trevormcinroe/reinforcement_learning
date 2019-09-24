@@ -2,8 +2,11 @@ from agents import Agent
 from simulation import Simulation
 from state import Environment
 
+# Init the Agent's environment
 env = Environment()
 
+# Init the expert agent
+# Feed it the expert trajectories
 a = Agent(type='expert',
           action_list=['a', 'b', 'c', 'd', 'e', 'f', 'g'],
           environment=env,
@@ -11,61 +14,52 @@ a = Agent(type='expert',
                         ['a', 'b', 'c', 'a', 'g', 'g', 'a', 'g', 'g'],
                         ['c', 'd', 'f', 'b', 'c', 'a', 'd', 'f', 'b', 'c']])
 
+# Build said expert trajectories
 a.build_trajectories()
 
+# Build the Agent's initial state distribution
 a.build_D()
 
-# print(a.state_trajectories)
-#
+# Init a standalone environment for the state itself
 simul_env = Environment()
 
+# Init the simulation
 sim = Simulation(agents=a, environment=simul_env)
 
 # Need to initialize Q(s,a)
 
-sim.gen_random_trajectory(i=15, n=2)
 
-rand_polic_state_trajs = sim.build_trajectories(trajectories=sim.random_policies)
 
+# TODO: FIX THIS METHOD
+# TODO: it should return a list of lists. The inner list is a list of  dictionaries.
+
+
+
+
+
+# This method will initalize a matrix of state-action pairs and their values (currently set to init all
+# at 0). This  will build a matrix that represents all of the states that the expert agent has visited
 sim.reset_q(trajectories=sim.agents['expert'].state_trajectories)
 
-print(sim.Q)
 
-# fv = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.5)
-# print(fv)
+##################################
+# === THE MAIN IRL ALGORITHM === #
+##################################
 
-#
-# print(env.current_state)
+# while t > BREAK_CONDITION (some arbitrarily small number)
+# === (1a) Generate Random Policy === #
+# This method helps to generate random trajectories. This is specifically used for the IRL algorithm
+# NOTE: THE .build_trajectories() METHOD RESETS THE SIMULATION ENVIRONMENT WHEN DONE. NO NEED TO EXPLICITLY CALL IT
+sim.gen_random_trajectory(i=15, n=1)
+# IS THIS EVEN NEEDED?
+rand_polic_state_trajs = sim.build_trajectories(trajectories=sim.random_policies)
 
 
-# from cvxopt import matrix
-# from cvxopt import solvers #convex optimization library
-# import numpy as np
-#
+# === (1b) Estimate μ for the random policy === #
+# Now that weh have our random policy, estimate μ for it
+# NOTE: THIS FUNCTION TAKES AN ACTION-TRAJECTORY, NOT A STATE TRAJECTORY
+mu_random = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.95)
 
-# print(matrix(2 * np.eye(1), tc='d'))
-#
-# def optimization(self):  # implement the convex optimization, posed as an SVM problem
-#     m = len(self.expertPolicy)
-#     P = matrix(2.0 * np.eye(m), tc='d')  # min ||w|| IDENTITY MATRIX?
-#     q = matrix(np.zeros(m), tc='d')
-#     policyList = [self.expertPolicy]
-#     h_list = [1]
-#     for i in self.policiesFE.keys():
-#         policyList.append(self.policiesFE[i])
-#         h_list.append(1)
-#     policyMat = np.matrix(policyList)
-#     policyMat[0] = -1 * policyMat[0]
-#     G = matrix(policyMat, tc='d')
-#     h = matrix(-np.array(h_list), tc='d')
-#
-#     # Min (1/2)x.T * Px + q.T * x
-#     # subject to Gx <= h, Ax = b
-#     # AND
-#     # Max
-#     sol = solvers.qp(P, q, G, h)
-#
-#     weights = np.squeeze(np.asarray(sol['x']))
-#     norm = np.linalg.norm(weights)
-#     weights = weights / norm
-#     return weights  # return the normalized weights
+# === (2) Projecton Method to estimate t, w === #
+# === (3) Initiate RL algo to find optimal policy for R = w.T * ϕ === #
+# === (4) Compute μ for the learned policy from the RL algo === #

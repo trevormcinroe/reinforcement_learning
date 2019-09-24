@@ -16,6 +16,7 @@ class Simulation:
         self.random_policies = None
         self.simul_env = environment
         self.Q = None
+        self.IRL = {}
 
     def _agent_init(self, agents):
         """
@@ -156,7 +157,7 @@ class Simulation:
             n (int): the number of trajectories to generate
 
         Returns:
-
+            (list of lists) where each inner list is a list of action selections
         """
 
         if not 'expert' in [k for k, v in self.agents.items()]:
@@ -184,7 +185,9 @@ class Simulation:
 
         else:
 
-            self.random_policies = [np.random.choice(action_list, 1)[0] for _ in range(i)]
+            # To ensure that the output of the function is a lists of lists, we add an extra [] around the
+            # return statement
+            self.random_policies = [[np.random.choice(action_list, 1)[0] for _ in range(i)]]
 
 
     # The Simulation has the ability to build its own trajectories.
@@ -192,7 +195,16 @@ class Simulation:
     # This will help to build out the Q(s,a) grid!
     # Therefore, this function will return a list of str(vectors)-state-representations
     def build_trajectories(self, trajectories):
-        """"""
+        """
+
+        Args:
+            trajectories (list of lists):
+
+        Returns:
+
+        """
+        if not type(trajectories[0]) == list:
+            raise TypeError('Trajectories must be a list of lists.')
 
         # Init a list that will hold all
         all_traj_holder = []
@@ -206,13 +218,6 @@ class Simulation:
 
             # Init an empty list
             traj_l = []
-
-            # Appending in our S_0
-            # There  is excessive use of the .copy() method here. This is a silly Python thing
-
-            # I have commented out the S0 as being  a vector of 0s!
-            # Seems unnecessary to have and complicates the Mu calc? 9.10.2019
-            # traj_l.append(self.environment.current_state.copy())
 
             # Looping through each state and recording it
             for action in traj:
@@ -327,3 +332,5 @@ class Simulation:
                                  index=state_vector)
 
         self.Q = self.Q.append(new_state)
+
+    # def
