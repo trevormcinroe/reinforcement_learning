@@ -56,7 +56,8 @@ t = 1000000
 mu_bar = mu_random_current
 w = mu_e - mu_bar
 
-print(sim.agents['expert'].D)
+import numpy as np
+print(sim.Q.loc[str(np.array([3, 1, 1, 0, 0, 0, 3]))])
 # The main algo has a break condition while t > BREAK_CONDITION (some arbitrarily small number)
 # while t > 1:
 #

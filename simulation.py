@@ -331,7 +331,7 @@ class Simulation:
 
         """
 
-        self.Q.loc[state_vector, action] = value
+        self.Q.loc[str(state_vector), action] = value
 
     def read_Q(self, state_vector, action=None):
         """
@@ -347,22 +347,22 @@ class Simulation:
         # This returns the entire vector of state-action pairs
         if not action:
 
-            return self.Q.loc[state_vector]
+            return self.Q.loc[str(state_vector)]
 
         else:
 
-            return self.Q.loc[state_vector, action]
+            return self.Q.loc[str(state_vector), action]
 
     def add_Q(self, state_vector):
         """"""
 
         new_state = pd.DataFrame(0,
                                  columns=self.agents['expert'].action_list,
-                                 index=state_vector)
+                                 index=str(state_vector))
 
         self.Q = self.Q.append(new_state)
 
-    def q_learning(self,  state_vector_current, action, state_vector_next, gamma, T, e=10e-3):
+    def q_learning(self, epsilon, gamma, T, w, e=10e-3):
         """This method contains all of the mathematics necessary to converge to an optimal policcy for the given
         estimated reward function, w.Tϕ
 
@@ -370,11 +370,10 @@ class Simulation:
         Q(S,A) <- Q(S,A) + alpha[w.Tϕ +  γ max_a Q(S',a) - Q(S,A)]
 
         Args:
-            state_vector_current:
-            action:
-            state_vector_next:
+            epsilon: represents the probability of choosing the greedy action at each step
             gamma:
             T:
+            w:
             e:
 
         Returns:
@@ -382,8 +381,7 @@ class Simulation:
         """
 
         delta = np.inf
-
-
+        previous_cumsum_r = 10000
 
         while delta > e:
 
@@ -405,16 +403,72 @@ class Simulation:
             # ANY COMPUTATION WITH ϕ SHOULD BE NORMALIZED
             S = self.simul_env._update_state(action=A, ret=True)
 
+            # Init our cumsum_reward
+            cumsum_r = self.read_Q(state_vector=S, action=A)
+
             # As we have already chosen an action above, (this represents STEP), we will loop until
             # the step counter is < T
             while step < T:
 
-                # Acquiring the current value for the state-action pair Q(S,A)
-                q_sa = self.read_Q(state_vector=S, action=A)
+                # Now that we are in some state, S, let's use an epsilon-greedy policy to choose our A
+                # Generating random number and if it is > epsilon, choosing a random action
+                # The output of this IF/ELSE block is Q(S,A) and A
+                # A will help us to compute S_prime
+                if np.random.random() > epsilon:
+
+                    # Random choice of action
+                    A = np.random.choice(self.agents['expert'].action_list)
+
+                    # Getting the Q(S,A) of that A
+                    q_sa = self.read_Q(state_vector=S, action=A)
+
+                # Else, choose the greedy action in the current state
+                else:
+
+                    # Here, we do thins in reverse order
+                    # First, we pull out the maximal value in the vector
+                    q_sa = np.max(self.read_Q(state_vector=S))
+
+                    # Now, we find the index of q_sa from the vector
+                    q_sa_vector = self.read_Q(state_vector=S)
+                    max_ind = q_sa_vector[q_sa_vector == q_sa].index[0]
+
+                    # Now we use this index to pull out the action from the column names in self.Q
+                    A = self.Q.columns[max_ind]
+
+                # Now that we have the action, A, that the agent will take in the step, we can
+                # find S_prime
+                S_prime = self.simul_env._update_state(action=A, ret=True)
+
+                # Now that we have selected an S_prime, there needs  to be an explicit check to see if this S'
+                # is within our Q-table
+                if S_prime not in self.Q.index:
+
+                    self.add_Q(state_vector=S_prime)
 
                 # Acquiring the greedy action in the resulting state
                 # This is done by pulling the entire row vector of self.Q[state_vector] and then argmax
-                q_splusa = np.max(self.read_Q(state_vector=state_vector_next))
+                q_splusa = np.max(self.read_Q(state_vector=S_prime))
 
-                # Now the only thing left to do is
+                # Now the only thing left to do is update dat dere Q(S,A)
+                # The states, S, coming out of the environmental update are not normed, so let's do that now
+                phi = S / T
+                q_sa_update = q_sa + self.alpha * (w.T * phi + gamma * q_splusa - q_sa)
 
+                # Now updating the value
+                self.update_Q(state_vector=S, action=A,  value=q_sa_update)
+
+                # Reassigning S <- S'
+                S = S_prime
+
+                # Adding to our reward
+                cumsum_r += w.T * phi
+
+                # Increment step
+                step += 1
+
+            # After we have taken all of our steps, check the total reward as compared to the last run
+            # If the amount is sufficiently small, break the damn loop
+            delta = np.abs(previous_cumsum_r - cumsum_r)
+
+            previous_cumsum_r = cumsum_r
