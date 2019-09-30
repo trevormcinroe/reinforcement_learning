@@ -10,8 +10,8 @@ env = Environment()
 a = Agent(type='expert',
           action_list=['a', 'b', 'c', 'd', 'e', 'f', 'g'],
           environment=env,
-          trajectories=[['a', 'b', 'c', 'e', 'g', 'b', 'c', 'e', 'g',],
-                        ['a', 'b', 'c', 'a', 'g', 'g', 'a', 'g', 'g'],
+          trajectories=[['a', 'b', 'c', 'e', 'g', 'b', 'c', 'e', 'g', 'c'],
+                        ['a', 'b', 'c', 'a', 'g', 'g', 'a', 'g', 'g', 'c'],
                         ['c', 'd', 'f', 'b', 'c', 'a', 'd', 'f', 'b', 'c']])
 
 # Build said expert trajectories
@@ -24,7 +24,7 @@ a.build_D()
 simul_env = Environment()
 
 # Init the simulation
-sim = Simulation(agents=a, environment=simul_env)
+sim = Simulation(agents=a, environment=simul_env, alpha=1)
 
 # Need to initialize Q(s,a)
 
@@ -33,35 +33,40 @@ sim = Simulation(agents=a, environment=simul_env)
 sim.reset_q(trajectories=sim.agents['expert'].state_trajectories)
 
 # Generating the μ_e - the expert's feature expectations
-expert_feat_exp = sim.μ_estimate(trajectories=sim.agents['expert'].trajectories, gamma=0.95)
+mu_e = sim.μ_estimate(trajectories=sim.agents['expert'].trajectories, gamma=0.95)
 
 
 ##################################
 # === THE MAIN IRL ALGORITHM === #
 ##################################
-# As is explained in section 3.1 of "Apprentiship Learning via IRL" by Abbeel, Ng ~ 2004, there is an initiation step
+# As is explained in section 3.1 of "Apprenticeship Learning via IRL" by Abbeel, Ng ~ 2004, there is an initiation step
 # that needs to be done.
 # Here, we generate some random policy and calculate its feature expectation vector
 # TODO: CHECK TO SEE IF GENERATING A RANDOM POLICY REPLACES THE OLD ONES OR ADDS ON TO IT
 sim.gen_random_trajectory(i=10, n=1)
 mu_random_current = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.95)
 
-# We need to set a counter here
+# Now, we set our "i" counter which will help us iterate through the program
+# We arbitrarily set t = a large number
 i = 1
-t = 2
+t = 1000000
 
+# Finally, before looping, we need to init our first "guess" at w, and make mu_bar_0 = mu_random_current
+# Through looping, these values will be replaced by incremental learning
+mu_bar = mu_random_current
+w = mu_e - mu_bar
 
-
+print(sim.agents['expert'].D)
 # The main algo has a break condition while t > BREAK_CONDITION (some arbitrarily small number)
 # while t > 1:
 #
 #     # === (1a) Generate Random Policy === #
 #     # This method helps to generate random trajectories. This is specifically used for the IRL algorithm
 #     # NOTE: THE .build_trajectories() METHOD RESETS THE SIMULATION ENVIRONMENT WHEN DONE. NO NEED TO EXPLICITLY CALL IT
-#     sim.gen_random_trajectory(i=15, n=1)
+#     sim.gen_random_trajectory(i=10, n=1)
 #     # IS THIS EVEN NEEDED?
 #     rand_polic_state_trajs = sim.build_trajectories(trajectories=sim.random_policies)
-#
+# #
 #
 #     # === (1b) Estimate μ for the random policy === #
 #     # Now that weh have our random policy, estimate μ for it

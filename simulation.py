@@ -2,7 +2,7 @@
 
 """
 #
-# TODO: Calculate the feature expectations of a given policy -- we'll need todo this for the
+# TODO: Add a self.gamma attribute so we don't need to manually feed it every call!
 # expert's features and some random policy
 
 from collections import Counter
@@ -227,8 +227,8 @@ class Simulation:
         # Now that we have our lists of state-trajectories, return those bad-boys
         return all_traj_holder
 
-    def mu_bar_update(self, mu_m1, mu_bar_m2, mu_e):
-        """The purpose of this function is to help compute the projection method
+    def irl_step(self, mu_m1, mu_bar_m2, mu_e):
+        """The purpose of this function is to help compute the projection method (the so-called IRL step)
 
         Args:
             mu_m1: feature expectation vector from the previous step
@@ -241,7 +241,7 @@ class Simulation:
             - updated t = ||mu_e - mu_bar_m1||2
         """
 
-        # Collection of maths explained in section 3.1 of  "Apprentiship Learning via IRL" by Abbeel, Ng ~ 2004
+        # Collection of maths explained in section 3.1 of  "Apprenticeship Learning via IRL" by Abbeel, Ng ~ 2004
         # In an effort to make it more readable (and fit syntaxically), the computation has been split
         # to multiple lines.
         # Sorry.
@@ -252,10 +252,12 @@ class Simulation:
         mu_bar_m1 = mu_bar_m2 + result
 
         # Now that we have the updated value of mu_bar_m1, we can calculate the updated value of our weight's vector, w
+        # After calculation, we ensure that ||w||1 <= 1
         updated_w = mu_e - mu_bar_m1
+        updated_w = updated_w / np.sum(np.abs(updated_w))
 
         # And with this, we can calculate the L2 norm for t
-        updated_t = np.linalg.norm(updated_w, ord=2)
+        updated_t = np.linalg.norm((mu_e - mu_bar_m1), ord=2)
 
         return mu_bar_m1, updated_w, updated_t
 
@@ -360,15 +362,59 @@ class Simulation:
 
         self.Q = self.Q.append(new_state)
 
-    def q_learning(self,  state_vector_current, action, state_vector_next):
-        """"""
+    def q_learning(self,  state_vector_current, action, state_vector_next, gamma, T, e=10e-3):
+        """This method contains all of the mathematics necessary to converge to an optimal policcy for the given
+        estimated reward function, w.Tϕ
 
-        # Acquiring the current value for the state-action pair Q(S,A)
-        q_sa = self.read_Q(state_vector=state_vector_current, action=action)
+        The update step takes the following form:
+        Q(S,A) <- Q(S,A) + alpha[w.Tϕ +  γ max_a Q(S',a) - Q(S,A)]
 
-        # Acquiring the greedy action in the resulting state
-        # This is done by pulling the entire row vector of self.Q[state_vector] and then argmax
-        q_splusa = np.max(self.read_Q(state_vector=state_vector_next))
+        Args:
+            state_vector_current:
+            action:
+            state_vector_next:
+            gamma:
+            T:
+            e:
 
-        # Now the only thing left to do is
+        Returns:
+
+        """
+
+        delta = np.inf
+
+
+
+        while delta > e:
+
+            # Since this is a time-limited learning problem, need to run each "simulation" for a given number of steps
+            # This requires init step counter to 0
+            # And drawing A_0 ~ D_e
+            step = 0
+
+            # We can use np.random.choice() to draw samples from a non-uniform distribution, believe it or not
+            A = np.random.choice([k for k,v in self.agents['expert'].D.items()],
+                                 p=[v for k,v in self.agents['export'].D.items()])
+
+            # Through this process, we need to keep track of the current state
+            # Thankfully, I had enough forethought (read: dumb luck) to give the Simulation it's own env
+            # Explicitly resetting the simulation's env
+            self.simul_env._reset(action_list=self.agents['expert'].action_list)
+
+            # IMPORTANT TO NOTE, THE Q-TABLE CONTAINS THE NON-NORMED STATE-VECTORS ϕ, THIS IS SIMPLY FOR READABILITY
+            # ANY COMPUTATION WITH ϕ SHOULD BE NORMALIZED
+            S = self.simul_env._update_state(action=A, ret=True)
+
+            # As we have already chosen an action above, (this represents STEP), we will loop until
+            # the step counter is < T
+            while step < T:
+
+                # Acquiring the current value for the state-action pair Q(S,A)
+                q_sa = self.read_Q(state_vector=S, action=A)
+
+                # Acquiring the greedy action in the resulting state
+                # This is done by pulling the entire row vector of self.Q[state_vector] and then argmax
+                q_splusa = np.max(self.read_Q(state_vector=state_vector_next))
+
+                # Now the only thing left to do is
 
