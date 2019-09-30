@@ -28,38 +28,56 @@ sim = Simulation(agents=a, environment=simul_env)
 
 # Need to initialize Q(s,a)
 
-
-
-# TODO: FIX THIS METHOD
-# TODO: it should return a list of lists. The inner list is a list of  dictionaries.
-
-
-
-
-
 # This method will initalize a matrix of state-action pairs and their values (currently set to init all
 # at 0). This  will build a matrix that represents all of the states that the expert agent has visited
 sim.reset_q(trajectories=sim.agents['expert'].state_trajectories)
+
+# Generating the μ_e - the expert's feature expectations
+expert_feat_exp = sim.μ_estimate(trajectories=sim.agents['expert'].trajectories, gamma=0.95)
 
 
 ##################################
 # === THE MAIN IRL ALGORITHM === #
 ##################################
+# As is explained in section 3.1 of "Apprentiship Learning via IRL" by Abbeel, Ng ~ 2004, there is an initiation step
+# that needs to be done.
+# Here, we generate some random policy and calculate its feature expectation vector
+# TODO: CHECK TO SEE IF GENERATING A RANDOM POLICY REPLACES THE OLD ONES OR ADDS ON TO IT
+sim.gen_random_trajectory(i=10, n=1)
+mu_random_current = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.95)
 
-# while t > BREAK_CONDITION (some arbitrarily small number)
-# === (1a) Generate Random Policy === #
-# This method helps to generate random trajectories. This is specifically used for the IRL algorithm
-# NOTE: THE .build_trajectories() METHOD RESETS THE SIMULATION ENVIRONMENT WHEN DONE. NO NEED TO EXPLICITLY CALL IT
-sim.gen_random_trajectory(i=15, n=1)
-# IS THIS EVEN NEEDED?
-rand_polic_state_trajs = sim.build_trajectories(trajectories=sim.random_policies)
+# We need to set a counter here
+i = 1
+t = 2
 
 
-# === (1b) Estimate μ for the random policy === #
-# Now that weh have our random policy, estimate μ for it
-# NOTE: THIS FUNCTION TAKES AN ACTION-TRAJECTORY, NOT A STATE TRAJECTORY
-mu_random = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.95)
 
-# === (2) Projecton Method to estimate t, w === #
-# === (3) Initiate RL algo to find optimal policy for R = w.T * ϕ === #
-# === (4) Compute μ for the learned policy from the RL algo === #
+# The main algo has a break condition while t > BREAK_CONDITION (some arbitrarily small number)
+# while t > 1:
+#
+#     # === (1a) Generate Random Policy === #
+#     # This method helps to generate random trajectories. This is specifically used for the IRL algorithm
+#     # NOTE: THE .build_trajectories() METHOD RESETS THE SIMULATION ENVIRONMENT WHEN DONE. NO NEED TO EXPLICITLY CALL IT
+#     sim.gen_random_trajectory(i=15, n=1)
+#     # IS THIS EVEN NEEDED?
+#     rand_polic_state_trajs = sim.build_trajectories(trajectories=sim.random_policies)
+#
+#
+#     # === (1b) Estimate μ for the random policy === #
+#     # Now that weh have our random policy, estimate μ for it
+#     # NOTE: THIS FUNCTION TAKES AN ACTION-TRAJECTORY, NOT A STATE TRAJECTORY
+#     mu_random = sim.μ_estimate(trajectories=sim.random_policies, gamma=0.95)
+#
+#     #  On the first iteration, we have to do some special stuff
+#     if i == 1:
+#
+#         w = expert_feat_exp - mu_random
+#
+#         print(w)
+#
+#     t -= 100
+    # === (2) Projecton Method to estimate t, w === #
+
+
+    # === (3) Initiate RL algo to find optimal policy for R = w.T * ϕ === #
+    # === (4) Compute μ for the learned policy from the RL algo === #

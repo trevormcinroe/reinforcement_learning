@@ -11,12 +11,13 @@ import pandas as pd
 
 class Simulation:
 
-    def __init__(self, agents, environment):
+    def __init__(self, agents, environment, alpha):
         self.agents = self._agent_init(agents=agents)
         self.random_policies = None
         self.simul_env = environment
         self.Q = None
         self.IRL = {}
+        self.alpha = alpha
 
     def _agent_init(self, agents):
         """
@@ -76,13 +77,7 @@ class Simulation:
                 # Init an empty list
                 traj_l = []
 
-                # Appending in our S_0
                 # There  is excessive use of the .copy() method here. This is a silly Python thing
-
-                # I have commented out the S0 as being  a vector of 0s!
-                # Seems unnecessary to have and complicates the Mu calc? 9.10.2019
-                # traj_l.append(self.environment.current_state.copy())
-
                 # Looping through each state and recording it
                 for action in trajectory:
                     traj_l.append(self.simul_env._update_state(action=action, ret=True).copy())
@@ -232,6 +227,38 @@ class Simulation:
         # Now that we have our lists of state-trajectories, return those bad-boys
         return all_traj_holder
 
+    def mu_bar_update(self, mu_m1, mu_bar_m2, mu_e):
+        """The purpose of this function is to help compute the projection method
+
+        Args:
+            mu_m1: feature expectation vector from the previous step
+            mu_bar_m2: avg feature expectation vector from two steps ago
+            mu_e: feature expectation vector from the expert
+
+        Returns:
+            - the orthogonal projection of mu_e onto the lines through mu_bar_m2 and mu_m1
+            - updated w = mu_e - mu_bar_m1
+            - updated t = ||mu_e - mu_bar_m1||2
+        """
+
+        # Collection of maths explained in section 3.1 of  "Apprentiship Learning via IRL" by Abbeel, Ng ~ 2004
+        # In an effort to make it more readable (and fit syntaxically), the computation has been split
+        # to multiple lines.
+        # Sorry.
+        numerator = (mu_m1 - mu_bar_m2).T * (mu_e - mu_bar_m2)
+        denominator = (mu_m1 - mu_bar_m2).T * (mu_m1 - mu_bar_m2)
+        result = numerator / denominator
+        result = result * (mu_m1 - mu_bar_m2)
+        mu_bar_m1 = mu_bar_m2 + result
+
+        # Now that we have the updated value of mu_bar_m1, we can calculate the updated value of our weight's vector, w
+        updated_w = mu_e - mu_bar_m1
+
+        # And with this, we can calculate the L2 norm for t
+        updated_t = np.linalg.norm(updated_w, ord=2)
+
+        return mu_bar_m1, updated_w, updated_t
+
     def reset_q(self, trajectories):
         """The purpose of this method is to build all of the unique state vectors and then use those to begin
         construction of the state-action-pair space. As a principle, this software will use "lazy computation". That is,
@@ -333,4 +360,15 @@ class Simulation:
 
         self.Q = self.Q.append(new_state)
 
-    # def
+    def q_learning(self,  state_vector_current, action, state_vector_next):
+        """"""
+
+        # Acquiring the current value for the state-action pair Q(S,A)
+        q_sa = self.read_Q(state_vector=state_vector_current, action=action)
+
+        # Acquiring the greedy action in the resulting state
+        # This is done by pulling the entire row vector of self.Q[state_vector] and then argmax
+        q_splusa = np.max(self.read_Q(state_vector=state_vector_next))
+
+        # Now the only thing left to do is
+
