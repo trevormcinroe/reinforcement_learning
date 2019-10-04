@@ -363,7 +363,7 @@ class Simulation:
         self.Q = self.Q.append(new_state)
 
     def q_learning(self, epsilon, gamma, T, w, e=10e-3):
-        """This method contains all of the mathematics necessary to converge to an optimal policcy for the given
+        """This method contains all of the mathematics necessary to converge to an optimal policy for the given
         estimated reward function, w.Tϕ
 
         The update step takes the following form:
@@ -407,7 +407,7 @@ class Simulation:
             cumsum_r = self.read_Q(state_vector=S, action=A)
 
             # As we have already chosen an action above, (this represents STEP), we will loop until
-            # the step counter is < T
+            # the step counter is == T
             while step < T:
 
                 # Now that we are in some state, S, let's use an epsilon-greedy policy to choose our A
@@ -453,7 +453,7 @@ class Simulation:
                 # Now the only thing left to do is update dat dere Q(S,A)
                 # The states, S, coming out of the environmental update are not normed, so let's do that now
                 phi = S / T
-                q_sa_update = q_sa + self.alpha * (w.T * phi + gamma * q_splusa - q_sa)
+                q_sa_update = q_sa + self.alpha * (np.inner(w * phi) + gamma * q_splusa - q_sa)
 
                 # Now updating the value
                 self.update_Q(state_vector=S, action=A,  value=q_sa_update)
