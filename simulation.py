@@ -370,11 +370,11 @@ class Simulation:
         Q(S,A) <- Q(S,A) + alpha[w.Tϕ +  γ max_a Q(S',a) - Q(S,A)]
 
         Args:
-            epsilon: represents the probability of choosing the greedy action at each step
-            gamma:
-            T:
-            w:
-            e:
+            epsilon (float): represents the probability of choosing the greedy action at each step [0,1]
+            gamma: the discount factor [0,1]
+            T: the number of time steps we are allowing our agent to traverse through
+            w (np.array): the vector of weights that is returned from the irl_step() method
+            e: an arbitrarily small number that determines the break condition of our "convergence"
 
         Returns:
 
@@ -462,7 +462,7 @@ class Simulation:
                 S = S_prime
 
                 # Adding to our reward
-                cumsum_r += w.T * phi
+                cumsum_r += np.inner(w, phi)
 
                 # Increment step
                 step += 1
@@ -472,3 +472,153 @@ class Simulation:
             delta = np.abs(previous_cumsum_r - cumsum_r)
 
             previous_cumsum_r = cumsum_r
+
+    ##################################################
+    ### ==== MC LINEAR FUNCTION APPROXIMATION ==== ###
+    ##################################################
+
+    # (1) Episode generator (takes a policy, w (from  irl_step) and returns G)
+    # (2) Policy evaluation (takes G, WFW)
+    # (3) Policy improvement (takes list of states visited from (1)
+
+    def mc_gradient_update(self, episode_steps, G, WFW, alpha):
+        """"""
+
+        for step in episode_steps:
+
+            # Computing v_hat
+            v_hat = np.inner(WFW, step)
+
+            WFW = WFW + alpha * (G - v_hat) * step
+
+        return WFW
+
+    def mc_policy_control(self):
+        """"""
+
+        pass
+
+
+    def mc_gradient(self, w, T, epsilon, alpha, e=1e-3):
+        """
+
+        Args:
+            w: should already be ||w||1 <= 1
+            T:
+            epsilon:
+            alpha:
+            e:
+
+        Returns:
+
+        """
+
+        # Initalizing the weight vector
+        # In order to avoid confusing the reward weight vector and the value function weight vector
+        # we will call the value function weight vector WFW
+        WFW = [0 for x in range(len(w))]
+
+        # Generating an episode following π
+        # Begin by restarting the state
+        self.simul_env._reset(action_list=self.agents['expert'].action_list)
+
+        # Looping through T steps and choosing actions
+        # For MC methods, we observe the entire episode and generate the cumulative reward
+        # So, let's first generate an enitre episode
+
+        # This will hold G
+        cumsum_r = 0
+
+        # This dictionary will help keep track of the value of the episodes
+        # {[episode_number : non-normed-action-vectors]}
+        episode_dict = {}
+
+        delta = 1000000
+
+        previous_cumsum_r = 10000000
+
+        episode = 0
+
+        while delta > e:
+
+            episode_dict[episode] = []
+
+            for step in range(T):
+
+                # This dictionary will help keep track of Q(S,A)
+                qsa_dict = {}
+
+                # Greedy action
+                if np.random.random() < epsilon:
+
+                    # Choosing the action that gives us the highest reward
+                    # For this we need to explicitly loop through each action and calculate the reward
+                    for action in self.agents['expert'].action_list:
+
+                        # Choosing  the action results in S'
+                        #  .current_state = {state1: cnt1, state2, cnt2}
+                        current_state = self.simul_env.current_state
+
+                        # Transforming  the current state into a vector and norming it
+                        current_state = [v for k,v in current_state.items()] / T
+
+                        # Because our State Vectors (returned in the last command) are simply a sum of the normed actions
+                        # that have been taken, we do not need to alter the actual environment
+                        # instead, we can spoof S' simply by adding the norm of the proposed action to the current state
+                        normed_action = action / T
+                        s_prime = current_state + normed_action
+
+                        # Calculating the value of action in the current state
+                        qsa_dict[action] = np.inner(WFW, s_prime)
+
+                    # Now that we have the value of each action, find the maximum
+                    # This should generalize to the case in which several or all  actions return the same  value
+                    max_action = None
+                    max_value = -10000000
+                    for k,v in qsa_dict.items():
+
+                        if v > max_value:
+
+                            max_action = k
+                            max_value = v
+
+                        else:
+
+                            continue
+
+                    # Now that we know what action is the greedy action, log it into episode_dict
+                    episode_dict[episode].append(max_action)
+
+                    # Now that we know our action, lets calculate the reward
+                    # There is some double-computation going on here, how can we simplify this?
+                    phi = (self.simul_env.current_state / T) + (max_action / T)
+                    cumsum_r += np.inner(w, phi)
+
+                    # Updating our state
+                    # No need to return
+                    self.simul_env._update_state(action=max_action)
+
+                else:
+
+                    # Random choice selection
+                    A = np.random.choice(self.agents['expert'].action_list)
+
+                    # Now that we know what action we have randomly selected, log it into episode_dict
+                    episode_dict[episode].append(A)
+
+                    # Calculating the reward
+                    phi = (self.simul_env.current_state / T) + (A / T)
+                    cumsum_r += np.inner(w, phi)
+
+                    # Updating our state
+                    # No need to return
+                    self.simul_env._update_state(action=A)
+
+            # Now that we have generated an episode according to e-greedy, let's perform a weight update
+            WFW =
+
+            episode += 1
+
+            # delta = np.abs(previous_cumsum_r - cumsum_r)
+            #
+            # previous_cumsum_r =  cumsum_r
