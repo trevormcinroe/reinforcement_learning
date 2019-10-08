@@ -119,6 +119,7 @@ class Simulation:
 
             # Once we have finished looping through all of the steps, let us sum the vectors
             # Let us start by init'ing a vector of zeros
+            # This is the same length as the feature vector, ϕ
             init_vector = np.zeros(len(inner_traj[0]))
 
             # Then, looping through each discounted state and summing them together
@@ -414,7 +415,7 @@ class Simulation:
                 # Generating random number and if it is > epsilon, choosing a random action
                 # The output of this IF/ELSE block is Q(S,A) and A
                 # A will help us to compute S_prime
-                if np.random.random() > epsilon:
+                if np.random.random() < epsilon:
 
                     # Random choice of action
                     A = np.random.choice(self.agents['expert'].action_list)
@@ -430,9 +431,11 @@ class Simulation:
                     q_sa = np.max(self.read_Q(state_vector=S))
 
                     # Now, we find the index of q_sa from the vector
+                    # TODO: I THINK THIS ALREADY RETURNS THE COLUMN NAME IS max_ind
                     q_sa_vector = self.read_Q(state_vector=S)
                     max_ind = q_sa_vector[q_sa_vector == q_sa].index[0]
 
+                    # TODO: SEE ABOVE
                     # Now we use this index to pull out the action from the column names in self.Q
                     A = self.Q.columns[max_ind]
 
@@ -453,7 +456,7 @@ class Simulation:
                 # Now the only thing left to do is update dat dere Q(S,A)
                 # The states, S, coming out of the environmental update are not normed, so let's do that now
                 phi = S / T
-                q_sa_update = q_sa + self.alpha * (np.inner(w * phi) + gamma * q_splusa - q_sa)
+                q_sa_update = q_sa + self.alpha * (np.inner(w, phi) + gamma * q_splusa - q_sa)
 
                 # Now updating the value
                 self.update_Q(state_vector=S, action=A,  value=q_sa_update)
