@@ -1,6 +1,9 @@
 from agents import Agent
 from simulation import Simulation
 from state import Environment
+import numpy as np
+
+# TODO: CHOICE TO ϕ DICTIONARY???
 
 # Init the Agent's environment
 env = Environment()
@@ -55,6 +58,7 @@ t = 1000000
 # Through looping, these values will be replaced by incremental learning
 mu_bar = mu_random_current
 w = mu_e - mu_bar
+w = w / np.sum(np.abs(w))
 
 import numpy as np
 print(sim.Q.loc[str(np.array([3, 1, 1, 0, 0, 0, 3]))])

@@ -357,6 +357,7 @@ class Simulation:
     def add_Q(self, state_vector):
         """"""
 
+        # TODO: INDEX MUST BE CALLED WITH A COLLECTION OF SOME KIND -- index=str(...) --> index=[str(...)]???
         new_state = pd.DataFrame(0,
                                  columns=self.agents['expert'].action_list,
                                  index=str(state_vector))
@@ -459,7 +460,7 @@ class Simulation:
                 q_sa_update = q_sa + self.alpha * (np.inner(w, phi) + gamma * q_splusa - q_sa)
 
                 # Now updating the value
-                self.update_Q(state_vector=S, action=A,  value=q_sa_update)
+                self.update_Q(state_vector=S, action=A, value=q_sa_update)
 
                 # Reassigning S <- S'
                 S = S_prime
