@@ -4,7 +4,6 @@ import numpy as np
 #TODO: Ensure that the trajectories arg is a list of lists
 
 #TODO: finish _build_D() method that ensures exploration. Is this needed??
-
 class Agent:
 
     """
