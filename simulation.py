@@ -348,11 +348,16 @@ class Simulation:
         """
 
         # First checking to see if the given state array exists
-        if not self._arreq_in_list(new_state_vector, self.state_q_mapping):
+        if not self._arreq_in_list(new_state_vector,
+                                   [v for k, v in self.state_q_mapping.items()]):
 
             self.state_q_mapping.update({
-                max([k for k,v in self.state_q_mapping.items()]) + 1: new_state_vector
+                max([k for k, v in self.state_q_mapping.items()]) + 1: new_state_vector
             })
+
+            # Not only do we update our mapping dictionary, we also update the q-table
+            index = np.max([k for k, v in self.state_q_mapping.items()])
+            self.update_q(index=index)
 
         # Now we need to pull out the key from the dictionary where the given new_state_vector
         # matches. We can then use this to find the proper row in the q-table
@@ -363,9 +368,6 @@ class Simulation:
             if np.array_equal(new_state_vector, self.state_q_mapping[i]):
 
                 index = i
-
-                # Not only do we update our mapping dictionary, we also update the q-table
-                self.update_q(index=index)
 
                 return index
 
@@ -399,7 +401,7 @@ class Simulation:
 
         self.Q = self.Q.append(new_state)
 
-    def q_learning(self, break_condition, num_steps, epsilon, w, gamma):
+    def q_learning(self, break_condition, num_steps, epsilon, w, gamma, IRL):
         """EPSILON IS PERCENT CHANCE OF RANDOM ACTION"""
 
         delta = 10000
@@ -458,13 +460,13 @@ class Simulation:
                     A = np.random.choice(self.agents['expert'].action_list)
 
                     # Pulling out the value of this action
-                    q_sa = state_table.loc[A]
+                    q_sa = state_table[A]
 
                 # Now discerning what S' will be -- first by updating the state
                 # This function returns a dict, so need to pull it out as a list and then array it
                 sprime = self.simul_env._update_state(action=A, ret=True)
                 sprime = np.array([v for k,v in sprime.items()])
-                print(sprime)
+
 
                 # Now we need to read the q-table for this as well
                 # First checking for the state index
@@ -474,11 +476,14 @@ class Simulation:
                 # Getting the full row for the given state
                 state_table = self.read_q(index=stateprime_index)
 
+                import time
+
                 # For Q-learning, we simply need the max of the next state
                 q_saprime = np.max(state_table)
 
                 # Getting our phi value, which is a normed representation of the current state
                 phi = current_state / num_steps
+
 
                 # New update
                 QSA = q_sa + self.alpha * (np.inner(w, phi) + gamma * q_saprime - q_sa)
@@ -495,13 +500,20 @@ class Simulation:
                 # Step increment
                 step += 1
 
+
             cumsum_r_ts.append(cumsum_r)
 
             delta_incrementor += 1
 
-            if delta_incrementor % 100 == 0:
+            if delta_incrementor % 300 == 0:
                 print('yay')
-                delta = np.average(cumsum_r_ts[len(cumsum_r_ts)-10:len(cumsum_r_ts)]) - cumsum_r_ts[len(cumsum_r_ts)]
+                delta = np.average(cumsum_r_ts[len(cumsum_r_ts)-10:len(cumsum_r_ts)]) - cumsum_r_ts[len(cumsum_r_ts)-1]
+
+        import matplotlib.pyplot as plt
+        plt.plot(cumsum_r_ts)
+        plt.savefig(f'trial_runs_{IRL}.png')
+
+
 
 
 
