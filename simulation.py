@@ -9,6 +9,7 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
 
 class Simulation:
 
@@ -45,6 +46,12 @@ class Simulation:
 
         # If there are no duplicate types, return a dict that will help to reference
         return {agent.type: agent for agent in agents}
+
+    def sigmoid(self, arry):
+        sig = []
+        for i in arry:
+            sig.append(1 / (1 + math.exp(-i)))
+        return np.array(sig)
 
     def μ_estimate(self, trajectories, gamma):
         """"""
@@ -84,7 +91,7 @@ class Simulation:
                 for action in trajectory:
 
                     traj_l.append(self.simul_env._update_state(action=action, ret=True).copy())
-                    # print(traj_l)
+
                 # Appending each trajectory to the outer holder
                 all_traj_holder.append(traj_l)
 
@@ -113,7 +120,10 @@ class Simulation:
 
                 # Normalizing this [0,1]
                 # This helps later on with L1 norming
-                phi = phi / len(traj)
+                # phi = phi / len(traj)
+
+                # Now trying sigmoid
+                phi = self.sigmoid(phi)
 
                 # Multiplying ϕ by our degrading discount factor
                 phi = (gamma ** i) * phi
@@ -536,7 +546,10 @@ class Simulation:
                 q_saprime = np.max(state_table)
 
                 # Getting our phi value, which is a normed representation of the current state
-                phi = current_state / num_steps
+                # phi = current_state / num_steps
+
+                # Sigmoid
+                phi = self.sigmoid(current_state)
 
 
                 # New update
@@ -560,7 +573,6 @@ class Simulation:
             delta_incrementor += 1
 
             if delta_incrementor % 500 == 0:
-                print('yay')
                 delta = np.average(cumsum_r_ts[len(cumsum_r_ts)-10:len(cumsum_r_ts)]) - cumsum_r_ts[len(cumsum_r_ts)-1]
 
 
@@ -592,7 +604,9 @@ class Simulation:
             # Updating the environment
             state_vec = self.simul_env._update_state(action=action, ret=True)
             state_vec = np.array([v for k, v in state_vec.items()])
-            state_vec = state_vec / num_steps
+            # state_vec = state_vec / num_steps
+            # Sigmoid
+            state_vec = self.sigmoid(state_vec)
 
             cumsum_r_e += np.inner(w, state_vec)
 
@@ -606,7 +620,9 @@ class Simulation:
             # Updating the environment
             state_vec = self.simul_env._update_state(action=action, ret=True)
             state_vec = np.array([v for k, v in state_vec.items()])
-            state_vec = state_vec / num_steps
+            # state_vec = state_vec / num_steps
+            # Sigmoid
+            state_vec = self.sigmoid(state_vec)
 
             cumsum_r_a += np.inner(w, state_vec)
 

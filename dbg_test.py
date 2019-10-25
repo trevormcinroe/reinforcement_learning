@@ -22,9 +22,9 @@ env = Environment()
 # Init the expert agent
 # Feed it the expert trajectories
 a = Agent(type='expert',
-          action_list=['a', 'b', 'c', 'd', 'e', 'f', ],
+          action_list=['r', 'l'],
           environment=env,
-          trajectories=[['r', 'r','r','r','r','r','r','r','r','r','l','l','l','l','l']])
+          trajectories=[['r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', ]])
 
 # Build said expert trajectories
 a.build_trajectories()
@@ -58,7 +58,7 @@ mu_historical.append(mu_r)
 # On the first iteration, some special things need to happen
 # (1) Initalization of the weight vector to mu_e - mu_0
 #   (i) we must ensure that ||w||1 <= 1
-w = (mu_e - 0.02) - (mu_r - 0.1)
+w = mu_e - mu_r
 if not np.linalg.norm(w, 1) <= 1:
     w = w / np.sum(np.abs(w))
 
@@ -128,6 +128,7 @@ while t > ep_break:
     print(i)
     print(w_historical)
     print(pi_historical)
+    print(t)
     print('-------------')
     e, a = sim.compare_e_a(w=w,
                            e_trajectory=sim.agents['expert'].trajectories[0],
