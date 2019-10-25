@@ -8,12 +8,13 @@
 from collections import Counter
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class Simulation:
 
     def __init__(self, agents, environment, alpha):
         self.agents = self._agent_init(agents=agents)
-        self.random_policies = None
+        self.random_policies = []
         self.simul_env = environment
         self.Q = None
         self.IRL = {}
@@ -81,8 +82,9 @@ class Simulation:
                 # There  is excessive use of the .copy() method here. This is a silly Python thing
                 # Looping through each state and recording it
                 for action in trajectory:
-                    traj_l.append(self.simul_env._update_state(action=action, ret=True).copy())
 
+                    traj_l.append(self.simul_env._update_state(action=action, ret=True).copy())
+                    # print(traj_l)
                 # Appending each trajectory to the outer holder
                 all_traj_holder.append(traj_l)
 
@@ -130,6 +132,7 @@ class Simulation:
 
             # Finally, appending the resulting Feature vector to the outer list
             outer_traj.append(init_vector)
+
 
         # Now summing together each of the feature expectation vectors in outer_traj
         init_vector = np.zeros(len(outer_traj[0]))
@@ -184,7 +187,7 @@ class Simulation:
 
             # To ensure that the output of the function is a lists of lists, we add an extra [] around the
             # return statement
-            self.random_policies = [[np.random.choice(action_list, 1)[0] for _ in range(i)]]
+            self.random_policies.append([np.random.choice(action_list, 1)[0] for _ in range(i)])
 
 
     # The Simulation has the ability to build its own trajectories.
@@ -229,6 +232,54 @@ class Simulation:
         # Now that we have our lists of state-trajectories, return those bad-boys
         return all_traj_holder
 
+    def greedy_policy(self, i):
+        """The purpose of this function is to use the current version of the q-table to generate
+        a greedy policy."""
+
+        # First resetting our simulation environment
+        self.simul_env._reset(action_list=self.agents['expert'].action_list)
+
+        # Generating the start state
+        current_state = np.zeros([len(self.agents['expert'].action_list)])
+
+        # Init our iteration helper
+        step = 0
+
+        # Init our action trajectory holder
+        action_traj = []
+
+        while step < i:
+
+            # Finding the index of the initial state
+            index = self.find_state(new_state_vector=current_state)
+
+            # Pulling the row out of the q_table
+            state_table = self.read_q(index=index)
+
+            # Pulling out the max value
+            q_sa = np.max(state_table)
+
+            # Explicit check to see if there is more than one action at the max value
+            if len(state_table[state_table == q_sa]) > 1:
+
+                # Choose randomly one of these actions
+                A = np.random.choice(state_table[state_table == q_sa].index.tolist())
+
+            else:
+
+                A = state_table[state_table == q_sa].index[0]
+
+            action_traj.append(A)
+
+            # Taking the step in the environment and recording the next state
+            current_state = self.simul_env._update_state(action=A, ret=True)
+            current_state = np.array([v for k, v in current_state.items()])
+
+            step += 1
+
+        # We return this inside of a list as this is the format that the mu_estimate function expects
+        return [action_traj]
+
     def irl_step(self, mu_m1, mu_bar_m2, mu_e):
         """The purpose of this function is to help compute the projection method (the so-called IRL step)
 
@@ -256,7 +307,9 @@ class Simulation:
         # Now that we have the updated value of mu_bar_m1, we can calculate the updated value of our weight's vector, w
         # After calculation, we ensure that ||w||1 <= 1
         updated_w = mu_e - mu_bar_m1
-        updated_w = updated_w / np.sum(np.abs(updated_w))
+
+        if not np.linalg.norm(updated_w, 1) <= 1:
+            updated_w = updated_w / np.sum(np.abs(updated_w))
 
         # And with this, we can calculate the L2 norm for t
         updated_t = np.linalg.norm((mu_e - mu_bar_m1), ord=2)
@@ -277,7 +330,7 @@ class Simulation:
                 the build_trajectories() method from either the Expert Agent or the Simulation itself
 
         Returns:
-
+            a resetted self.Q table
         """
 
         if not type(trajectories) == list:
@@ -403,6 +456,7 @@ class Simulation:
 
     def q_learning(self, break_condition, num_steps, epsilon, w, gamma, IRL):
         """EPSILON IS PERCENT CHANCE OF RANDOM ACTION"""
+        print(self.Q)
 
         delta = 10000
         delta_incrementor = 0
@@ -505,18 +559,60 @@ class Simulation:
 
             delta_incrementor += 1
 
-            if delta_incrementor % 300 == 0:
+            if delta_incrementor % 500 == 0:
                 print('yay')
                 delta = np.average(cumsum_r_ts[len(cumsum_r_ts)-10:len(cumsum_r_ts)]) - cumsum_r_ts[len(cumsum_r_ts)-1]
 
-        import matplotlib.pyplot as plt
+
         plt.plot(cumsum_r_ts)
         plt.savefig(f'trial_runs_{IRL}.png')
+        plt.clf()
+        return cumsum_r_ts
 
+    def compare_e_a(self, w, e_trajectory, a_trajectory, num_steps):
+        """A helper function that will compute the ratio of the agent's performance with the expert's performance
 
+        Args:
+            w (np.array): the current weight vector
+            e_trajectory : an example of an expert's action-trajectory
+            a_trajectory: an example of the agent's action-trajectory
 
+        Returns:
+            the cumulate sum of rewards, expert then agent
+        """
 
+        # First, the expert
+        # Resetting the environment
+        self.simul_env._reset(action_list=self.agents['expert'].action_list)
 
+        cumsum_r_e = 0
+
+        for action in e_trajectory:
+
+            # Updating the environment
+            state_vec = self.simul_env._update_state(action=action, ret=True)
+            state_vec = np.array([v for k, v in state_vec.items()])
+            print(state_vec)
+            print(type(state_vec))
+            state_vec = state_vec / num_steps
+
+            cumsum_r_e += np.inner(w, state_vec)
+
+        # Now for the agent
+        # Resetting the environment
+        self.simul_env._reset(action_list=self.agents['expert'].action_list)
+
+        cumsum_r_a = 0
+
+        for action in a_trajectory:
+            # Updating the environment
+            state_vec = self.simul_env._update_state(action=action, ret=True)
+            state_vec = [v for k, v in state_vec.items()]
+            state_vec = state_vec / num_steps
+
+            cumsum_r_a += np.inner(w, state_vec)
+
+        return cumsum_r_e, cumsum_r_a
 
 
 
