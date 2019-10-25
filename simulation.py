@@ -592,8 +592,6 @@ class Simulation:
             # Updating the environment
             state_vec = self.simul_env._update_state(action=action, ret=True)
             state_vec = np.array([v for k, v in state_vec.items()])
-            print(state_vec)
-            print(type(state_vec))
             state_vec = state_vec / num_steps
 
             cumsum_r_e += np.inner(w, state_vec)
@@ -607,10 +605,16 @@ class Simulation:
         for action in a_trajectory:
             # Updating the environment
             state_vec = self.simul_env._update_state(action=action, ret=True)
-            state_vec = [v for k, v in state_vec.items()]
+            state_vec = np.array([v for k, v in state_vec.items()])
             state_vec = state_vec / num_steps
 
             cumsum_r_a += np.inner(w, state_vec)
+
+        # In order to ensure that we aren't dividing by zero...
+        if cumsum_r_a == 0:
+            cumsum_r_a += 0.000001
+        if cumsum_r_e == 0:
+            cumsum_r_e += 0.000001
 
         return cumsum_r_e, cumsum_r_a
 

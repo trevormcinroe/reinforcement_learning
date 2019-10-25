@@ -22,9 +22,9 @@ env = Environment()
 # Init the expert agent
 # Feed it the expert trajectories
 a = Agent(type='expert',
-          action_list=['l', 'r'],
+          action_list=['a', 'b', 'c', 'd', 'e', 'f', ],
           environment=env,
-          trajectories=[['r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']])
+          trajectories=[['r', 'r','r','r','r','r','r','r','r','r','l','l','l','l','l']])
 
 # Build said expert trajectories
 a.build_trajectories()
@@ -48,7 +48,7 @@ mu_e = sim.μ_estimate(trajectories=sim.agents['expert'].trajectories, gamma=0.9
 
 # Generation of a random policy
 # This policy gets stored into sim.random_policies, which is a list of trajectory lists
-sim.gen_random_trajectory(i=10)
+sim.gen_random_trajectory(i=15)
 pi_historical.append(sim.random_policies[0])
 
 # Getting the feature expectation of the randomly generated policy
@@ -58,8 +58,10 @@ mu_historical.append(mu_r)
 # On the first iteration, some special things need to happen
 # (1) Initalization of the weight vector to mu_e - mu_0
 #   (i) we must ensure that ||w||1 <= 1
-w = mu_e - mu_r
-w = w / np.sum(np.abs(w))
+w = (mu_e - 0.02) - (mu_r - 0.1)
+if not np.linalg.norm(w, 1) <= 1:
+    w = w / np.sum(np.abs(w))
+
 w_historical.append(w)
 
 # (2) mu_hat = mu_r
@@ -78,19 +80,19 @@ ep_break = 0.00001
 # Now that we have our first randomly estimate weight vector, we can proceed to the first RL step
 cumsum_r_ts = sim.q_learning(break_condition=.00001,
                              num_steps=10,
-                             epsilon=.25,
+                             epsilon=.1,
                              w=w,
-                             gamma=0.95,
+                             gamma=0.99,
                              IRL=i)
 r_historical.append(cumsum_r_ts)
 
 # Creating our new estimate of our policy
 # We do this by first computing a greedy policy
-greedy_traj = sim.greedy_policy(i=10)
+greedy_traj = sim.greedy_policy(i=15)
 pi_historical.append(greedy_traj)
 
 # Then, getting the feature expectation of the greedy traj
-mu_r = sim.μ_estimate(trajectories=greedy_traj, gamma=0.95)
+mu_r = sim.μ_estimate(trajectories=greedy_traj, gamma=0.99)
 mu_historical.append(mu_r)
 
 # Increment. Remember!
@@ -110,25 +112,22 @@ while t > ep_break:
     # RL Step
     cumsum_r_ts = sim.q_learning(break_condition=.00001,
                              num_steps=10,
-                             epsilon=.25,
+                             epsilon=.1,
                              w=w,
-                             gamma=0.95,
+                             gamma=0.99,
                              IRL=i)
     r_historical.append(cumsum_r_ts)
 
     # New greedy policy
-    greedy_traj = sim.greedy_policy(i=10)
+    greedy_traj = sim.greedy_policy(i=15)
     pi_historical.append(greedy_traj)
-    mu_r = sim.μ_estimate(trajectories=greedy_traj, gamma=0.95)
+    mu_r = sim.μ_estimate(trajectories=greedy_traj, gamma=0.99)
     mu_historical.append(mu_r)
 
     i += 1
     print(i)
     print(w_historical)
     print(pi_historical)
-    print(sim.state_q_mapping)
-    print(t)
-
     print('-------------')
     e, a = sim.compare_e_a(w=w,
                            e_trajectory=sim.agents['expert'].trajectories[0],
@@ -136,3 +135,15 @@ while t > ep_break:
                            num_steps=10)
 
     print(f"Ratio: {a / e}")
+
+w_historical.append(w)
+print(w_historical)
+print(pi_historical)
+print('-------------')
+e, a = sim.compare_e_a(w=w,
+                       e_trajectory=sim.agents['expert'].trajectories[0],
+                       a_trajectory=pi_historical[len(pi_historical) - 1][0],
+                       num_steps=10)
+print(a)
+print(e)
+print(f"Ratio: {a / e}")
