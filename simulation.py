@@ -92,11 +92,12 @@ class Simulation:
 
                     traj_l.append(self.simul_env._update_state(action=action, ret=True).copy())
 
+
                 # Appending each trajectory to the outer holder
                 all_traj_holder.append(traj_l)
 
             # Setting the trajectories for the Agent
-            trajectories = all_traj_holder
+            trajectories = all_traj_holder.copy()
 
             # Resetting the environment back to its initial state
             self.simul_env._reset(action_list=self.agents['expert'].action_list)
@@ -120,10 +121,10 @@ class Simulation:
 
                 # Normalizing this [0,1]
                 # This helps later on with L1 norming
-                # phi = phi / len(traj)
+                phi = phi / len(traj)
 
                 # Now trying sigmoid
-                phi = self.sigmoid(phi)
+                # phi = self.sigmoid(phi)
 
                 # Multiplying ϕ by our degrading discount factor
                 phi = (gamma ** i) * phi
@@ -252,6 +253,9 @@ class Simulation:
         # Generating the start state
         current_state = np.zeros([len(self.agents['expert'].action_list)])
 
+        # Taking our first step in accordance with ~D
+
+
         # Init our iteration helper
         step = 0
 
@@ -308,21 +312,37 @@ class Simulation:
         # In an effort to make it more readable (and fit syntaxically), the computation has been split
         # to multiple lines.
         # Sorry.
-        numerator = (mu_m1 - mu_bar_m2).T * (mu_e - mu_bar_m2)
-        denominator = (mu_m1 - mu_bar_m2).T * (mu_m1 - mu_bar_m2)
-        result = numerator / denominator
-        result = result * (mu_m1 - mu_bar_m2)
-        mu_bar_m1 = mu_bar_m2 + result
+        # numerator = (mu_m1 - mu_bar_m2).T * (mu_e - mu_bar_m2)
+        # denominator = (mu_m1 - mu_bar_m2).T * (mu_m1 - mu_bar_m2)
+        # result = numerator / denominator
+        # result = result * (mu_m1 - mu_bar_m2)
+        # mu_bar_m1 = mu_bar_m2 + result
+        #
+        # # Now that we have the updated value of mu_bar_m1, we can calculate the updated value of our weight's vector, w
+        # # After calculation, we ensure that ||w||1 <= 1
+        # updated_w = mu_e - mu_bar_m1
+        #
+        # # if not np.linalg.norm(updated_w, 1) <= 1:
+        # #     # updated_w = updated_w / np.sum(np.abs(updated_w))
+        #
+        #
+        # # And with this, we can calculate the L2 norm for t
+        # updated_t = np.linalg.norm((mu_e - mu_bar_m1), ord=2)
 
-        # Now that we have the updated value of mu_bar_m1, we can calculate the updated value of our weight's vector, w
-        # After calculation, we ensure that ||w||1 <= 1
+        # SECOND ATTEMPT AT THE IRL UPDATE
+        A = mu_bar_m2
+        B = mu_m1 - A
+        C = mu_e - mu_bar_m2
+        mu_bar_m1 = A + (np.dot(B, C) / np.dot(B, B)) * (B)
+
         updated_w = mu_e - mu_bar_m1
 
         if not np.linalg.norm(updated_w, 1) <= 1:
-            updated_w = updated_w / np.sum(np.abs(updated_w))
+            updated_w = updated_w / np.linalg.norm(updated_w, 1)
+        # updated_w = self.sigmoid(updated_w)
 
-        # And with this, we can calculate the L2 norm for t
-        updated_t = np.linalg.norm((mu_e - mu_bar_m1), ord=2)
+        updated_t = np.linalg.norm((mu_e - mu_bar_m1), 2)
+
 
         return mu_bar_m1, updated_w, updated_t
 
@@ -466,7 +486,6 @@ class Simulation:
 
     def q_learning(self, break_condition, num_steps, epsilon, w, gamma, IRL):
         """EPSILON IS PERCENT CHANCE OF RANDOM ACTION"""
-        print(self.Q)
 
         delta = 10000
         delta_incrementor = 0
@@ -572,7 +591,7 @@ class Simulation:
 
             delta_incrementor += 1
 
-            if delta_incrementor % 500 == 0:
+            if delta_incrementor % 350 == 0:
                 delta = np.average(cumsum_r_ts[len(cumsum_r_ts)-10:len(cumsum_r_ts)]) - cumsum_r_ts[len(cumsum_r_ts)-1]
 
 
@@ -581,7 +600,7 @@ class Simulation:
         plt.clf()
         return cumsum_r_ts
 
-    def compare_e_a(self, w, e_trajectory, a_trajectory, num_steps):
+    def compare_e_a(self, w, a_trajectory, num_steps):
         """A helper function that will compute the ratio of the agent's performance with the expert's performance
 
         Args:
@@ -599,7 +618,7 @@ class Simulation:
 
         cumsum_r_e = 0
 
-        for action in e_trajectory:
+        for action in a_trajectory:
 
             # Updating the environment
             state_vec = self.simul_env._update_state(action=action, ret=True)
@@ -614,25 +633,25 @@ class Simulation:
         # Resetting the environment
         self.simul_env._reset(action_list=self.agents['expert'].action_list)
 
-        cumsum_r_a = 0
+        # cumsum_r_a = 0
 
-        for action in a_trajectory:
-            # Updating the environment
-            state_vec = self.simul_env._update_state(action=action, ret=True)
-            state_vec = np.array([v for k, v in state_vec.items()])
-            # state_vec = state_vec / num_steps
-            # Sigmoid
-            state_vec = self.sigmoid(state_vec)
+        # for action in a_trajectory:
+        #     # Updating the environment
+        #     state_vec = self.simul_env._update_state(action=action, ret=True)
+        #     state_vec = np.array([v for k, v in state_vec.items()])
+        #     # state_vec = state_vec / num_steps
+        #     # Sigmoid
+        #     state_vec = self.sigmoid(state_vec)
+        #
+        #     cumsum_r_a += np.inner(w, state_vec)
+        #
+        # # In order to ensure that we aren't dividing by zero...
+        # if cumsum_r_a == 0:
+        #     cumsum_r_a += 0.000001
+        # if cumsum_r_e == 0:
+        #     cumsum_r_e += 0.000001
 
-            cumsum_r_a += np.inner(w, state_vec)
-
-        # In order to ensure that we aren't dividing by zero...
-        if cumsum_r_a == 0:
-            cumsum_r_a += 0.000001
-        if cumsum_r_e == 0:
-            cumsum_r_e += 0.000001
-
-        return cumsum_r_e, cumsum_r_a
+        return cumsum_r_e, cumsum_r_e / num_steps
 
 
 
