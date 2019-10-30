@@ -247,6 +247,9 @@ class Simulation:
         """The purpose of this function is to use the current version of the q-table to generate
         a greedy policy."""
 
+        # Init our action trajectory holder
+        action_traj = []
+
         # First resetting our simulation environment
         self.simul_env._reset(action_list=self.agents['expert'].action_list)
 
@@ -254,13 +257,21 @@ class Simulation:
         current_state = np.zeros([len(self.agents['expert'].action_list)])
 
         # Taking our first step in accordance with ~D
+        # Fist pulling out the probabilities of each action
+        s0_percents = [v for k, v in self.agents['expert'].D.items()]
 
+        # Then choosing an action in accordance to these probabilities
+        A = np.random.choice(a=self.agents['expert'].action_list, p=s0_percents)
+
+        # Adding on to our stuff here...
+        action_traj.append(A)
+
+        # Taking the step in the environment and recording the next state
+        current_state = self.simul_env._update_state(action=A, ret=True)
+        current_state = np.array([v for k, v in current_state.items()])
 
         # Init our iteration helper
-        step = 0
-
-        # Init our action trajectory holder
-        action_traj = []
+        step = 1
 
         while step < i:
 
@@ -335,11 +346,18 @@ class Simulation:
         C = mu_e - mu_bar_m2
         mu_bar_m1 = A + (np.dot(B, C) / np.dot(B, B)) * (B)
 
-        updated_w = mu_e - mu_bar_m1
+        print(f'A: {A}')
+        print(f'B: {B}')
+        print(f'C: {C}')
 
-        if not np.linalg.norm(updated_w, 1) <= 1:
-            updated_w = updated_w / np.linalg.norm(updated_w, 1)
+        updated_w = mu_e - mu_bar_m1
+        print(f'mu_e: {mu_e}')
+        print(f'mu_bar_m1: {mu_bar_m1}')
+        # if not np.linalg.norm(updated_w, 1) <= 1:
+        #     updated_w = updated_w / np.linalg.norm(updated_w, 1)
         # updated_w = self.sigmoid(updated_w)
+        # Using L2 Norm of the weights
+        updated_w = updated_w / np.linalg.norm(updated_w, 2)
 
         updated_t = np.linalg.norm((mu_e - mu_bar_m1), 2)
 
@@ -548,8 +566,21 @@ class Simulation:
                 # Now discerning what S' will be -- first by updating the state
                 # This function returns a dict, so need to pull it out as a list and then array it
                 sprime = self.simul_env._update_state(action=A, ret=True)
+
                 sprime = np.array([v for k,v in sprime.items()])
 
+                # Injecting something different... nonsumming
+                # if A == 'l':
+                #     sprime = np.array([1, 0, 0, 0])
+                #
+                # elif A == 'r':
+                #     sprime = np.array([0, 1, 0, 0])
+                #
+                # elif A == 'u':
+                #     sprime = np.array([0, 0, 1, 0])
+                #
+                # else:
+                #     sprime = np.array([0, 0, 0, 1])
 
                 # Now we need to read the q-table for this as well
                 # First checking for the state index
@@ -559,17 +590,17 @@ class Simulation:
                 # Getting the full row for the given state
                 state_table = self.read_q(index=stateprime_index)
 
-                import time
-
                 # For Q-learning, we simply need the max of the next state
                 q_saprime = np.max(state_table)
 
                 # Getting our phi value, which is a normed representation of the current state
-                # phi = current_state / num_steps
+                phi = current_state / num_steps
 
                 # Sigmoid
-                phi = self.sigmoid(current_state)
+                # phi = self.sigmoid(current_state)
 
+                # Phi
+                # phi = current_state
 
                 # New update
                 QSA = q_sa + self.alpha * (np.inner(w, phi) + gamma * q_saprime - q_sa)
@@ -591,7 +622,7 @@ class Simulation:
 
             delta_incrementor += 1
 
-            if delta_incrementor % 350 == 0:
+            if delta_incrementor % 200 == 0:
                 delta = np.average(cumsum_r_ts[len(cumsum_r_ts)-10:len(cumsum_r_ts)]) - cumsum_r_ts[len(cumsum_r_ts)-1]
 
 
