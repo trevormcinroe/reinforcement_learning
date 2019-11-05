@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import os
 from agents import Agent
 from state import Environment
 from simulation import Simulation
@@ -7,6 +9,7 @@ from simulation import Simulation
 # == Information Keepers == #
 #############################
 # For post-analysis
+run = 1
 pi_historical = []
 w_historical = []
 r_historical = []
@@ -57,7 +60,7 @@ mu_historical.append(mu_r)
 # Iteration helper
 # How to set ep_break appropriately?
 i = 1
-ep_break = 0.00001
+ep_break = 0.0001
 
 # On the first iteration, some special things need to happen
 # (1) Initalization of the weight vector to mu_e - mu_0
@@ -111,6 +114,32 @@ while t > ep_break:
                                     mu_bar_m2=mu_bar_historical[i-2],
                                     mu_e=mu_e)
 
+    # The above IRL step will terminate with w == 'exact' when the mu_m1 == mu_e
+    # If so, the .irl_step() method above will return w as 'exact', or STR
+    if type(w) == str:
+
+        print('-------------------------------')
+        print('Algorithm found exact match')
+
+        # Making a folder
+        os.mkdir(f'{i}')
+
+        # Writing the current Q-table to csv
+        sim.Q.to_csv(f'{i}/q_table.csv')
+
+        # Saving the state-mapping-thing
+        pd.DataFrame(sim.state_q_mapping, index=sim.agents['expert'].action_list).to_csv(f'{i}/state_mapping.csv')
+
+        # Writing t to a csv
+        pd.DataFrame({'t': t}, index=[0]).to_csv(f'{i}/t.csv')
+
+        # Writing the weight
+        pd.DataFrame({'w': w}, index=sim.agents['expert'].action_list).to_csv(f'{i}/w.csv')
+
+        # Writing the final policy
+        pd.DataFrame({'pi': greedy_traj[0]}).to_csv(f'{i}/pi.csv')
+        print('-------------------------------')
+
     # Appending the newly calculated information to their respective information holders
     mu_bar_historical.append(mu_bar_m1)
     w_historical.append(w)
@@ -134,30 +163,76 @@ while t > ep_break:
     mu_historical.append(mu_r)
 
     i += 1
+    print(t)
+    if i % 30 == 0:
+        print('-------------------------------')
+        print(f'Iteration {i}. Saving snapshot...')
 
-    print(f't: {t}')
-    print(f'weight: {w}')
-    print(f'pi: {greedy_traj}')
-    print('---------------------------------------------------')
-    if i % 50 == 0:
-        print(w_historical[len(w_historical)-1])
-        print(pi_historical[len(pi_historical)-1])
+        # Making a folder
+        os.mkdir(f'{i}')
 
-        print('-------------')
-        # a, ratio = sim.compare_e_a(w=w,
-        #                            a_trajectory=pi_historical[len(pi_historical) - 1][0],
-        #                            num_steps=10)
-        #
-        # print(f"Ratio: {ratio}")
+        # Writing the current Q-table to csv
+        sim.Q.to_csv(f'{i}/q_table.csv')
 
-w_historical.append(w)
-print(w_historical)
-print(pi_historical)
-print(f't: {t}')
-print('-------------')
-# a, ratio = sim.compare_e_a(w=w,
-#                            a_trajectory=pi_historical[len(pi_historical) - 1][0],
-#                            num_steps=10)
-# print(a)
+        # Saving the state-mapping-thing
+        pd.DataFrame(sim.state_q_mapping, index=sim.agents['expert'].action_list).to_csv(f'{i}/state_mapping.csv')
+
+        # Writing t to a csv
+        pd.DataFrame({'t': t}, index=[0]).to_csv(f'{i}/t.csv')
+
+        # Writing the weight
+        pd.DataFrame({'w': w}, index=sim.agents['expert'].action_list).to_csv(f'{i}/w.csv')
+
+        # Writing the final policy
+        pd.DataFrame({'pi': greedy_traj[0]}).to_csv(f'{i}/pi.csv')
+        print('-------------------------------')
+
+
+print('-------------------------------')
+print(f'Algorithm terminated at t: {t}. Saving results...')
+
+# Making a folder
+os.mkdir(f'{i}')
+
+# Writing the current Q-table to csv
+sim.Q.to_csv(f'{i}/q_table.csv')
+
+# Saving the state-mapping-thing
+pd.DataFrame(sim.state_q_mapping, index=sim.agents['expert'].action_list).to_csv(f'{i}/state_mapping.csv')
+
+# Writing t to a csv
+pd.DataFrame({'t': [t]}, index=[0]).to_csv(f'{i}/t.csv')
+
+# Writing the weight
+pd.DataFrame({'w': w}, index=sim.agents['expert'].action_list).to_csv(f'{i}/w.csv')
+
+# Writing the final policy
+pd.DataFrame({'pi': greedy_traj[0]}).to_csv(f'{i}/pi.csv')
+print('-------------------------------')
+
+#     print(f't: {t}')
+#     print(f'weight: {w}')
+#     print(f'pi: {greedy_traj}')
+#     print('---------------------------------------------------')
+#     if i % 50 == 0:
+#         print(w_historical[len(w_historical)-1])
+#         print(pi_historical[len(pi_historical)-1])
 #
-# print(f"Ratio: {ratio}")
+#         print('-------------')
+#         # a, ratio = sim.compare_e_a(w=w,
+#         #                            a_trajectory=pi_historical[len(pi_historical) - 1][0],
+#         #                            num_steps=10)
+#         #
+#         # print(f"Ratio: {ratio}")
+#
+# w_historical.append(w)
+# print(w_historical)
+# print(pi_historical)
+# print(f't: {t}')
+# print('-------------')
+# # a, ratio = sim.compare_e_a(w=w,
+# #                            a_trajectory=pi_historical[len(pi_historical) - 1][0],
+# #                            num_steps=10)
+# # print(a)
+# #
+# # print(f"Ratio: {ratio}")

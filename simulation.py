@@ -346,23 +346,31 @@ class Simulation:
         C = mu_e - mu_bar_m2
         mu_bar_m1 = A + (np.dot(B, C) / np.dot(B, B)) * (B)
 
-        print(f'A: {A}')
-        print(f'B: {B}')
-        print(f'C: {C}')
+        # print(f'A: {A}')
+        # print(f'B: {B}')
+        # print(f'C: {C}')
 
         updated_w = mu_e - mu_bar_m1
-        print(f'mu_e: {mu_e}')
-        print(f'mu_bar_m1: {mu_bar_m1}')
-        # if not np.linalg.norm(updated_w, 1) <= 1:
-        #     updated_w = updated_w / np.linalg.norm(updated_w, 1)
-        # updated_w = self.sigmoid(updated_w)
-        # Using L2 Norm of the weights
-        updated_w = updated_w / np.linalg.norm(updated_w, 2)
 
-        updated_t = np.linalg.norm((mu_e - mu_bar_m1), 2)
+        # print(f'mu_e: {mu_e}')
+        # print(f'mu_bar_m1: {mu_bar_m1}')
+        # Sometimes, mu_bar_1 is equal to mu_e
+        # Practically, this means that the Agent has recovered the *exact* policy as the expert
+        # In these cases, the L2 Norm update of the weights will result in a / 0 error
 
+        try:
 
-        return mu_bar_m1, updated_w, updated_t
+            updated_w = updated_w / np.linalg.norm(updated_w, 2)
+
+            updated_t = np.linalg.norm((mu_e - mu_bar_m1), 2)
+
+            return mu_bar_m1, updated_w, updated_t
+
+        except:
+
+            updated_t = np.linalg.norm((mu_e - mu_bar_m1), 2)
+
+            return mu_bar_m1, 'exact', updated_t
 
     def reset_q(self, trajectories):
         """The purpose of this method is to build all of the unique state vectors and then use those to begin
