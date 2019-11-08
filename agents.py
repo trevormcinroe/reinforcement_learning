@@ -24,7 +24,7 @@ class Agent:
         self.D = None
         self.T = None  # Might not even need this with certain RL algos
 
-    def build_trajectories(self):
+    def build_trajectories(self, attribute_based=False):
         """
         Using a list of given action lists from an "expert", this function will build the Trajectory of the States
         after each action in the list has been taken.
@@ -58,9 +58,10 @@ class Agent:
 
         # Looping through each given trajectory within the trajectories list
         for trajectory in self.trajectories:
+            # print(self.environment.current_state)
 
             # If the user does wish to do so, hit the reset button on the environment
-            self.environment._reset(action_list=self.action_list)
+            self.environment._reset(action_list=self.action_list, attribute_based=attribute_based)
 
             # Init an empty list
             traj_l = []
@@ -75,7 +76,7 @@ class Agent:
             # Looping through each state and recording it
             for action in trajectory:
 
-                traj_l.append(self.environment._update_state(action=action, ret=True).copy())
+                traj_l.append(self.environment._update_state(action=action, ret=True, attribute_based=attribute_based).copy())
 
             # Appending each trajectory to the outer holder
             all_traj_holder.append(traj_l)
@@ -84,7 +85,7 @@ class Agent:
         self.state_trajectories = all_traj_holder
 
         # Resetting the environment back to its initial state
-        self.environment._reset(action_list=self.action_list)
+        self.environment._reset(action_list=self.action_list, attribute_based=attribute_based)
 
     def build_D(self, ensure_exploration=False, ε=None):
         """"""

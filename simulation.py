@@ -575,7 +575,7 @@ class Simulation:
                 # This function returns a dict, so need to pull it out as a list and then array it
                 sprime = self.simul_env._update_state(action=A, ret=True)
 
-                sprime = np.array([v for k,v in sprime.items()])
+                sprime = np.array([v for k, v in sprime.items()])
 
                 # Injecting something different... nonsumming
                 # if A == 'l':
