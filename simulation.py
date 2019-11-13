@@ -81,7 +81,7 @@ class Simulation:
             for trajectory in trajectories:
 
                 # If the user does wish to do so, hit the reset button on the environment
-                self.simul_env._reset(action_list=self.agents['expert'].action_list)
+                self.simul_env._reset(action_list=self.agents['expert'].action_list, attribute_based=True)
 
                 # Init an empty list
                 traj_l = []
@@ -90,8 +90,7 @@ class Simulation:
                 # Looping through each state and recording it
                 for action in trajectory:
 
-                    traj_l.append(self.simul_env._update_state(action=action, ret=True).copy())
-
+                    traj_l.append(self.simul_env._update_state(action=action, ret=True, attribute_based=True).copy())
 
                 # Appending each trajectory to the outer holder
                 all_traj_holder.append(traj_l)
@@ -100,7 +99,7 @@ class Simulation:
             trajectories = all_traj_holder.copy()
 
             # Resetting the environment back to its initial state
-            self.simul_env._reset(action_list=self.agents['expert'].action_list)
+            self.simul_env._reset(action_list=self.agents['expert'].action_list, attribute_based=True)
 
         # Looping through the list of trajectories...
         for traj in trajectories:
@@ -117,7 +116,8 @@ class Simulation:
 
                 # We need to ensure that the ϕ vector is in the same order
                 # We can do this by looping through each of the
-                phi = np.array([step[x] for x in self.agents['expert'].action_list])
+                # phi = np.array([step[x] for x in self.agents['expert'].action_list])
+                phi = np.array([step[x] for x in [str(y) for y in range(17)]])
 
                 # Normalizing this [0,1]
                 # This helps later on with L1 norming
@@ -251,23 +251,24 @@ class Simulation:
         action_traj = []
 
         # First resetting our simulation environment
-        self.simul_env._reset(action_list=self.agents['expert'].action_list)
+        self.simul_env._reset(action_list=self.agents['expert'].action_list, attribute_based=True)
 
         # Generating the start state
-        current_state = np.zeros([len(self.agents['expert'].action_list)])
+        # current_state = np.zeros([len(self.simul_env.current_state)])
 
         # Taking our first step in accordance with ~D
         # Fist pulling out the probabilities of each action
-        s0_percents = [v for k, v in self.agents['expert'].D.items()]
+        # s0_percents = [v for k, v in self.agents['expert'].D.items()]
 
         # Then choosing an action in accordance to these probabilities
-        A = np.random.choice(a=self.agents['expert'].action_list, p=s0_percents)
+        # A = np.random.choice(a=self.agents['expert'].action_list, p=s0_percents)
+        A = np.random.choice(a=self.agents['expert'].action_list)
 
         # Adding on to our stuff here...
         action_traj.append(A)
 
         # Taking the step in the environment and recording the next state
-        current_state = self.simul_env._update_state(action=A, ret=True)
+        current_state = self.simul_env._update_state(action=A, ret=True, attribute_based=True)
         current_state = np.array([v for k, v in current_state.items()])
 
         # Init our iteration helper
@@ -297,7 +298,7 @@ class Simulation:
             action_traj.append(A)
 
             # Taking the step in the environment and recording the next state
-            current_state = self.simul_env._update_state(action=A, ret=True)
+            current_state = self.simul_env._update_state(action=A, ret=True, attribute_based=True)
             current_state = np.array([v for k, v in current_state.items()])
 
             step += 1
@@ -413,9 +414,10 @@ class Simulation:
                 # As such, we need to loop through the expert's action values...
                 state_holder = []
 
-                for action in self.agents['expert'].action_list:
+                # for action in self.agents['expert'].action_list:
+                for attribute in [k for k, v in self.agents['expert'].state_trajectories[0][0].items()]:
 
-                    state_holder.append(state[action])
+                    state_holder.append(state[attribute])
 
                 # Finally, we append a str representation of a np.array() into the state_vector_holder
                 state_vector_holder.append(np.array(state_holder))
@@ -436,6 +438,11 @@ class Simulation:
 
         # Now creating our mapping for the Q-table
         self.state_q_mapping = {x: svc[x] for x in range(len(svc))}
+
+        # # And now, let's init a Pandas DF
+        # self.Q = pd.DataFrame(0,
+        #                       columns=self.agents['expert'].action_list,
+        #                       index=[x for x in range(len(svc))])
 
         # And now, let's init a Pandas DF
         self.Q = pd.DataFrame(0,
@@ -525,10 +532,12 @@ class Simulation:
             cumsum_r = 0
 
             # Generating the start state
-            current_state = np.zeros([len(self.agents['expert'].action_list)])
+            # current_state = np.zeros([len(self.agents['expert'].action_list)])
+            current_state = np.zeros([len(self.simul_env.current_state)])
+
 
             # Resetting the Simulation Environment
-            self.simul_env._reset(action_list=self.agents['expert'].action_list)
+            self.simul_env._reset(action_list=self.agents['expert'].action_list, attribute_based=True)
 
             # This outer loop goes through episodes
             while step < num_steps:
@@ -573,7 +582,7 @@ class Simulation:
 
                 # Now discerning what S' will be -- first by updating the state
                 # This function returns a dict, so need to pull it out as a list and then array it
-                sprime = self.simul_env._update_state(action=A, ret=True)
+                sprime = self.simul_env._update_state(action=A, ret=True, attribute_based=True)
 
                 sprime = np.array([v for k, v in sprime.items()])
 
@@ -630,7 +639,8 @@ class Simulation:
 
             delta_incrementor += 1
 
-            if delta_incrementor % 200 == 0:
+            if delta_incrementor % 50 == 0:
+
                 delta = np.average(cumsum_r_ts[len(cumsum_r_ts)-10:len(cumsum_r_ts)]) - cumsum_r_ts[len(cumsum_r_ts)-1]
 
 
